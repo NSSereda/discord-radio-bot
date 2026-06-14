@@ -5,17 +5,15 @@ Two slash commands:
   /stop             -- stop playback and leave the channel
 """
 
-import asyncio
 import logging
 import os
-import re
 import sys
-from urllib.parse import urlparse
 
 import discord
-import yt_dlp
 from discord import app_commands
 from dotenv import load_dotenv
+
+from services.audio_resolver import AudioResolverService, StreamResolutionError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("radio-bot")
@@ -33,32 +31,7 @@ FFMPEG_OPTS = {
     "options": "-vn",
 }
 
-YDL_OPTS = {
-    "format": "bestaudio/best",
-    "noplaylist": True,  # a video inside a playlist URL -> just the video
-    "quiet": True,
-    "no_warnings": True,
-}
-
-DIRECT_STREAM_RE = re.compile(r"\.(mp3|aac|ogg|opus|m4a|flac|wav|m3u8|pls)$", re.I)
-
-async def resolve_audio(url: str) -> tuple[str, str]:
-    if DIRECT_STREAM_RE.search(urlparse(url).path):
-        return url, url
-
-    def _extract() -> tuple[str, str]:
-        with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
-            info = ydl.extract_info(url, download=False)
-            if "entries" in info:  # playlist/search result
-                info = info["entries"][0]
-            return info["url"], info.get("title", url)
-
-    loop = asyncio.get_running_loop()
-    try:
-        return await loop.run_in_executor(None, _extract)
-    except Exception:
-        log.warning("yt-dlp couldn't resolve %s; falling back to direct stream", url)
-        return url, url
+audio_resolver = AudioResolverService.from_env()
 
 intents = discord.Intents.default()  # slash commands need no privileged intents
 client = discord.Client(intents=intents)
@@ -66,6 +39,7 @@ tree = app_commands.CommandTree(client)
 
 @client.event
 async def on_ready():
+    await audio_resolver.prepare()
     await tree.sync()
     log.info("Logged in as %s (slash commands synced)", client.user)
 
@@ -88,18 +62,22 @@ async def start(interaction: discord.Interaction, url: str):
         elif vc.channel != channel:
             await vc.move_to(channel)
 
-        stream_url, title = await resolve_audio(url)
+        resolved = await audio_resolver.resolve(url)
 
         if vc.is_playing():
             vc.stop()  # switch: drop the current stream, start the new one
 
-        vc.play(discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTS))
+        vc.play(discord.FFmpegPCMAudio(resolved.stream_url, **FFMPEG_OPTS))
+    except StreamResolutionError as exc:
+        log.warning("Failed to resolve stream: %s", exc)
+        await interaction.followup.send(f"Couldn't play that stream: {exc}", ephemeral=True)
+        return
     except Exception as exc:
         log.exception("Failed to start playback")
         await interaction.followup.send(f"Couldn't play that stream: {exc}", ephemeral=True)
         return
 
-    await interaction.followup.send(f"📻 Now playing: {title}")
+    await interaction.followup.send(f"📻 Now playing: {resolved.title}")
 
 
 @tree.command(name="stop", description="Stop playback and leave the voice channel.")
