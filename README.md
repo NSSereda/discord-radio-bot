@@ -1,12 +1,12 @@
 # Discord Radio Bot
 
-A minimal Discord bot that streams internet radio into a voice channel.
+A minimal Discord bot that streams internet radio and YouTube audio into a voice channel.
 
 ## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `/start url:<stream-url>` | Joins your voice channel and plays the URL. If something is already playing, it switches to the new URL. |
+| `/start url:<url>` | Joins your voice channel and plays the URL. Accepts direct radio stream URLs **and** YouTube / other [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (SoundCloud, Bandcamp, …). If something is already playing, it switches to the new URL. |
 | `/stop` | Stops playback and leaves the channel. |
 
 ## Requirements
@@ -39,8 +39,8 @@ You should see `Logged in as ... (slash commands synced)`.
 ## Test
 
 1. Join a voice channel in your server.
-2. `/start url:https://ice1.somafm.com/groovesalad-128-mp3` — the bot joins and plays.
-3. `/start url:https://ice1.somafm.com/dronezone-128-mp3` — audio switches to the new stream.
+2. `/start url:https://ice1.somafm.com/groovesalad-128-mp3` — the bot joins and plays a radio stream.
+3. `/start url:https://www.youtube.com/watch?v=...` — audio switches to the YouTube track (the reply shows its title).
 4. `/stop` — the bot leaves.
 
 Tip: verify any stream URL plays at all with `ffplay "<url>"` before debugging the bot.
