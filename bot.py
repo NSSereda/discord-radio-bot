@@ -1,14 +1,9 @@
-"""Minimal Discord radio bot.
-
-Two slash commands:
-  /start url:<url>  -- join the caller's voice channel and play the URL
-  /stop             -- stop playback and leave the channel
-"""
-
+import argparse
 import asyncio
 import logging
 import os
 import re
+import shutil
 import sys
 from urllib.parse import urlparse
 
@@ -16,6 +11,7 @@ import discord
 import yt_dlp
 from discord import app_commands
 from dotenv import load_dotenv
+from yt_dlp.cookies import SUPPORTED_BROWSERS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("radio-bot")
@@ -32,15 +28,38 @@ FFMPEG_OPTS = {
     ),
     "options": "-vn",
 }
-
-YDL_OPTS = {
-    "format": "bestaudio/best",
-    "noplaylist": True,  # a video inside a playlist URL -> just the video
-    "quiet": True,
-    "no_warnings": True,
-}
+JS_RUNTIMES = ("deno", "node", "bun")
+BUNDLED_SOLVER_RUNTIMES = ("deno", "bun")
 
 DIRECT_STREAM_RE = re.compile(r"\.(mp3|aac|ogg|opus|m4a|flac|wav|m3u8|pls)$", re.I)
+YDL_OPTS: dict = {}
+
+def build_ydl_opts(browser: str | None) -> None:
+    opts = {
+        "format": "bestaudio/best",
+        "noplaylist": True,  # a video inside a playlist URL -> just the video
+        "quiet": True,
+        "no_warnings": True,
+    }
+    if browser:  # None when --cookies-from-browser none was passed
+        opts["cookiesfrombrowser"] = (browser,)
+
+    runtimes = {name: {} for name in JS_RUNTIMES if shutil.which(name)}
+    if runtimes:
+        opts["js_runtimes"] = runtimes
+        # Without a bundled solver (deno/bun), the runtime can't solve YouTube's
+        # signature challenge offline; allow fetching the solver from GitHub.
+        if not any(r in runtimes for r in BUNDLED_SOLVER_RUNTIMES):
+            opts["remote_components"] = ["ejs:github"]
+    else:
+        log.warning(
+            "No JavaScript runtime (deno/node/bun) found on PATH; some sites need "
+            "one to extract media reliably. Install one, e.g. `brew install deno`."
+        )
+
+    global YDL_OPTS
+    YDL_OPTS = opts
+
 
 async def resolve_audio(url: str) -> tuple[str, str]:
     if DIRECT_STREAM_RE.search(urlparse(url).path):
@@ -54,11 +73,7 @@ async def resolve_audio(url: str) -> tuple[str, str]:
             return info["url"], info.get("title", url)
 
     loop = asyncio.get_running_loop()
-    try:
-        return await loop.run_in_executor(None, _extract)
-    except Exception:
-        log.warning("yt-dlp couldn't resolve %s; falling back to direct stream", url)
-        return url, url
+    return await loop.run_in_executor(None, _extract)
 
 intents = discord.Intents.default()  # slash commands need no privileged intents
 client = discord.Client(intents=intents)
@@ -113,5 +128,33 @@ async def stop(interaction: discord.Interaction):
     await interaction.response.send_message("⏹️ Stopped.")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Minimal Discord radio bot.")
+    parser.add_argument(
+        "--cookies-from-browser",
+        default="chrome",
+        metavar="BROWSER",
+        help="Browser to read cookies from so yt-dlp can access content that "
+             "requires sign-in or age verification (%(default)s by default). "
+             "Use 'none' to disable. "
+             f"Supported: {', '.join(sorted(SUPPORTED_BROWSERS))}.",
+    )
+    args = parser.parse_args()
+
+    browser = args.cookies_from_browser.lower()
+    if browser == "none":
+        browser = None
+    elif browser not in SUPPORTED_BROWSERS:
+        parser.error(
+            f"unsupported browser {args.cookies_from_browser!r}; choose from "
+            f"{', '.join(sorted(SUPPORTED_BROWSERS))}, or 'none'"
+        )
+
+    build_ydl_opts(browser)
+    log.info("Using cookies from browser: %s", browser or "none")
+
     client.run(TOKEN)
+
+
+if __name__ == "__main__":
+    main()

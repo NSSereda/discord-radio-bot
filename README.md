@@ -6,7 +6,7 @@ A minimal Discord bot that streams internet radio and YouTube audio into a voice
 
 | Command | What it does |
 |---------|--------------|
-| `/start url:<url>` | Joins your voice channel and plays the URL. Accepts direct radio stream URLs **and** YouTube / other [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (SoundCloud, Bandcamp, …). If something is already playing, it switches to the new URL. |
+| `/start url:<url>` | Joins your voice channel and plays the URL. Accepts direct radio stream URLs **and** [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (Youtube, SoundCloud, Bandcamp, …). If something is already playing, it switches to the new URL. |
 | `/stop` | Stops playback and leaves the channel. |
 
 ## Requirements
@@ -22,19 +22,29 @@ A minimal Discord bot that streams internet radio and YouTube audio into a voice
    ```
    DISCORD_TOKEN=your_real_token_here
    ```
-4. **Install deps**:
+4. **Install deps** (creates the venv and installs everything):
    ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
+   make update
    ```
-
 ## Run
 
 ```bash
-python bot.py
+make run                  # or: python bot.py
 ```
-You should see `Logged in as ... (slash commands synced)`.
+
+### Playing content that needs sign-in or age verification
+
+By default the bot reads cookies from **Chrome** so yt-dlp can access content gated behind sign-in or age verification. The browser must be signed in to an account that can view that content. Override the browser, or disable cookies entirely, with `--cookies-from-browser`:
+
+```bash
+make run BROWSER=firefox   # use Firefox's cookies
+make run BROWSER=none       # no cookies
+# equivalently: python bot.py --cookies-from-browser firefox
+```
+
+Supported: `brave, chrome, chromium, edge, opera, vivaldi, whale, firefox, safari`.
+
+> macOS note: Chrome triggers a one-time Keychain prompt on first cookie read (grant "Always Allow"); **Firefox** avoids it; **Safari** needs Full Disk Access for your terminal.
 
 ## Test
 
@@ -44,5 +54,3 @@ You should see `Logged in as ... (slash commands synced)`.
 4. `/stop` — the bot leaves.
 
 Tip: verify any stream URL plays at all with `ffplay "<url>"` before debugging the bot.
-
-> Slash commands can take a minute to appear the first time after `tree.sync()`.
