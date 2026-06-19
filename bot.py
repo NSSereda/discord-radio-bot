@@ -84,6 +84,20 @@ async def on_ready():
     await tree.sync()
     log.info("Logged in as %s (slash commands synced)", client.user)
 
+
+async def _leave_after_playback(vc, channel, error) -> None:
+    if vc.is_playing():
+        return
+    if not vc.is_connected():  # already gone (e.g. via /stop)
+        return
+
+    await vc.disconnect()
+    if error is not None:
+        log.error("Playback error: %s", error)
+        await channel.send(f"⚠️ Playback error, leaving the channel: {error}")
+    else:
+        await channel.send("📻 Stream ended — leaving the channel.")
+
 @tree.command(name="start", description="Play audio by URL.")
 @app_commands.describe(url="The URL to play")
 async def start(interaction: discord.Interaction, url: str):
@@ -108,7 +122,12 @@ async def start(interaction: discord.Interaction, url: str):
         if vc.is_playing():
             vc.stop()  # switch: drop the current stream, start the new one
 
-        vc.play(discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTS))
+        def _after(error, vc=vc, channel=interaction.channel):
+            asyncio.run_coroutine_threadsafe(
+                _leave_after_playback(vc, channel, error), client.loop
+            )
+
+        vc.play(discord.FFmpegPCMAudio(stream_url, **FFMPEG_OPTS), after=_after)
     except Exception as exc:
         log.exception("Failed to start playback")
         await interaction.followup.send(f"Couldn't play that stream: {exc}", ephemeral=True)
@@ -126,6 +145,34 @@ async def stop(interaction: discord.Interaction):
 
     await vc.disconnect()
     await interaction.response.send_message("⏹️ Stopped.")
+
+
+@tree.command(name="pause", description="Pause playback.")
+async def pause(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+    if vc is None or not vc.is_playing():
+        await interaction.response.send_message("Nothing is playing.", ephemeral=True)
+        return
+    if vc.is_paused():
+        await interaction.response.send_message("Already paused.", ephemeral=True)
+        return
+
+    vc.pause()
+    await interaction.response.send_message("⏸️ Paused.")
+
+
+@tree.command(name="resume", description="Resume paused playback.")
+async def resume(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+    if vc is None:
+        await interaction.response.send_message("Not connected.", ephemeral=True)
+        return
+    if not vc.is_paused():
+        await interaction.response.send_message("Nothing is paused.", ephemeral=True)
+        return
+
+    vc.resume()
+    await interaction.response.send_message("▶️ Resumed.")
 
 
 def main() -> None:

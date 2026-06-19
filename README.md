@@ -7,6 +7,8 @@ A minimal Discord bot that streams internet radio and YouTube audio into a voice
 | Command | What it does |
 |---------|--------------|
 | `/start url:<url>` | Joins your voice channel and plays the URL. Accepts direct radio stream URLs **and** [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (Youtube, SoundCloud, Bandcamp, …). If something is already playing, it switches to the new URL. |
+| `/pause` | Pauses playback (the bot stays in the channel). |
+| `/resume` | Resumes paused playback. |
 | `/stop` | Stops playback and leaves the channel. |
 
 ## Requirements
