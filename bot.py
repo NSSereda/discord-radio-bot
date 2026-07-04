@@ -187,9 +187,9 @@ async def _advance(guild: discord.Guild, error) -> None:
 
     await _play_next(guild)
 
-@tree.command(name="start", description="Queue audio by URL (playlists add every track).")
+@tree.command(name="play", description="Queue audio by URL (playlists add every track).")
 @app_commands.describe(url="The URL to play or queue")
-async def start(interaction: discord.Interaction, url: str):
+async def play(interaction: discord.Interaction, url: str):
     # Connecting to voice can take longer than Discord's 3s ack window, so defer.
     await interaction.response.defer()
 

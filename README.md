@@ -6,7 +6,7 @@ A minimal Discord bot that streams internet radio and YouTube audio into a voice
 
 | Command | What it does |
 |---------|--------------|
-| `/start url:<url>` | Joins your voice channel and **queues** the URL. Plays immediately if nothing is playing, otherwise adds to the end of the queue. Accepts direct radio stream URLs **and** [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (Youtube, SoundCloud, Bandcamp, …). A **playlist URL enqueues every track**. |
+| `/play url:<url>` | Joins your voice channel and **queues** the URL. Plays immediately if nothing is playing, otherwise adds to the end of the queue. Accepts direct radio stream URLs **and** [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (Youtube, SoundCloud, Bandcamp, …). A **playlist URL enqueues every track**. |
 | `/skip` | Skips the current track and plays the next queued one. |
 | `/queue` | Shows the current track and what's queued up next. |
 | `/clear` | Clears the queue (the current track keeps playing). |
@@ -54,10 +54,10 @@ Supported: `brave, chrome, chromium, edge, opera, vivaldi, whale, firefox, safar
 ## Test
 
 1. Join a voice channel in your server.
-2. `/start url:https://ice1.somafm.com/groovesalad-128-mp3` — the bot joins and plays a radio stream.
-3. `/start url:https://www.youtube.com/watch?v=...` — the YouTube track is queued behind the current one; `/queue` shows both.
+2. `/play url:https://ice1.somafm.com/groovesalad-128-mp3` — the bot joins and plays a radio stream.
+3. `/play url:https://www.youtube.com/watch?v=...` — the YouTube track is queued behind the current one; `/queue` shows both.
 4. `/skip` — advances to the next queued track.
-5. `/start url:<playlist URL>` — every track in the playlist is added to the queue.
+5. `/play url:<playlist URL>` — every track in the playlist is added to the queue.
 6. `/stop` — the bot clears the queue and leaves.
 
 Tip: verify any stream URL plays at all with `ffplay "<url>"` before debugging the bot.
