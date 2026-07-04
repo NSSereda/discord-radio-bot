@@ -1,15 +1,18 @@
 # Discord Radio Bot
 
-A minimal Discord bot that streams internet radio and YouTube audio into a voice channel.
+A minimal Discord bot that streams internet radio and YouTube audio into a voice channel, with queue and playlist support.
 
 ## Commands
 
 | Command | What it does |
 |---------|--------------|
-| `/start url:<url>` | Joins your voice channel and plays the URL. Accepts direct radio stream URLs **and** [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (Youtube, SoundCloud, Bandcamp, …). If something is already playing, it switches to the new URL. |
+| `/start url:<url>` | Joins your voice channel and **queues** the URL. Plays immediately if nothing is playing, otherwise adds to the end of the queue. Accepts direct radio stream URLs **and** [yt-dlp](https://github.com/yt-dlp/yt-dlp)-supported links (Youtube, SoundCloud, Bandcamp, …). A **playlist URL enqueues every track**. |
+| `/skip` | Skips the current track and plays the next queued one. |
+| `/queue` | Shows the current track and what's queued up next. |
+| `/clear` | Clears the queue (the current track keeps playing). |
 | `/pause` | Pauses playback (the bot stays in the channel). |
 | `/resume` | Resumes paused playback. |
-| `/stop` | Stops playback and leaves the channel. |
+| `/stop` | Stops playback, clears the queue, and leaves the channel. |
 
 ## Requirements
 
@@ -52,7 +55,9 @@ Supported: `brave, chrome, chromium, edge, opera, vivaldi, whale, firefox, safar
 
 1. Join a voice channel in your server.
 2. `/start url:https://ice1.somafm.com/groovesalad-128-mp3` — the bot joins and plays a radio stream.
-3. `/start url:https://www.youtube.com/watch?v=...` — audio switches to the YouTube track (the reply shows its title).
-4. `/stop` — the bot leaves.
+3. `/start url:https://www.youtube.com/watch?v=...` — the YouTube track is queued behind the current one; `/queue` shows both.
+4. `/skip` — advances to the next queued track.
+5. `/start url:<playlist URL>` — every track in the playlist is added to the queue.
+6. `/stop` — the bot clears the queue and leaves.
 
 Tip: verify any stream URL plays at all with `ffplay "<url>"` before debugging the bot.
